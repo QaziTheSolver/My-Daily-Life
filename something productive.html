@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Daily Life</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #93D15A; /* lime green background */
+    padding: 20px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+  }
+  h1{
+    width:100%;
+    text-align:center;
+    color:#422B01; /* dark brown heading */
+    font-size:36px;
+    margin-bottom:20px;
+  }
+  .box {
+    background-color: #6E4800; /* inside of box */
+    border: 4px solid #422B01; /* dark brown outline */
+    padding:20px;
+    border-radius:18px;
+    box-shadow:0 0 12px rgba(0,0,0,0.2);
+    flex:1;
+    min-width:300px;
+    color:#fff;
+  }
+  h2,h3{color:#fff;}
+  input,textarea,button{width:100%;padding:10px;margin:8px 0;border-radius:8px;}
+  textarea{height:150px; resize:none;}
+  button{
+    background:#3498db;color:white;border:none;border-radius:10px;font-size:16px;cursor:pointer;
+  }
+  button:hover{background:#2980b9;}
+  ul{padding:0;}
+  li{list-style:none;background:rgba(255,255,255,0.3);margin:6px 0;padding:10px;border-radius:10px;color:#fff;}
+  #gameArea{
+    width:300px;height:300px;background:rgba(255,255,255,0.3);position:relative;border-radius:15px;margin-bottom:10px;overflow:hidden;
+  }
+  #motivationBox{
+    background:rgba(255,255,255,0.3);
+    padding:15px;border-radius:12px;margin-left:20px; flex:1; min-width:250px;
+  }
+</style>
+</head>
+<body>
+<h1>My Daily Life</h1>
+
+<!-- LEFT SIDE: Timetable -->
+<div class="box">
+  <h2>Manual Timetable</h2>
+  <input type="text" id="manualActivity" placeholder="Activity name (Study, Play)">
+  <input type="time" id="manualTime">
+  <button id="addManualBtn">Add Activity</button>
+  <h3>Your Manual Timetable</h3>
+  <ul id="manualTimetable"></ul>
+  <button id="activateManualBtn">Activate Manual Timetable Notifications</button>
+
+  <hr>
+
+  <h2>AI Timetable Generator</h2>
+  <textarea id="userInfo" placeholder="Example: I am 14. School 8-2. Gaming 2 hours. Sleep 10pm."></textarea>
+  <button id="activateAI">Activate AI Timetable</button>
+  <h3>AI Timetable</h3>
+  <ul id="aiTimetable"></ul>
+</div>
+
+<!-- RIGHT SIDE: Notepad + Games + Motivation -->
+<div class="box" style="display:flex; flex-direction:column;">
+  <h2>Daily Notepad</h2>
+  <input type="text" id="noteHeading" placeholder="Enter heading for today's note">
+  <textarea id="noteContent" placeholder="Write your notes here..."></textarea>
+  <button id="saveNote">Save Note</button>
+
+  <hr>
+
+  <div style="display:flex; flex-wrap:wrap; gap:20px;">
+    <!-- Game Area -->
+    <div>
+      <h2 id="gameTitle">Game: Catch the Ball</h2>
+      <div id="gameArea"></div>
+      <p>Score: <span id="score">0</span></p>
+    </div>
+
+    <!-- Motivation Box -->
+    <div id="motivationBox">
+      <h2>Daily Motivation</h2>
+      <p id="quoteText">"The only way to do great work is to love what you do."</p>
+      <p id="quoteAuthor">- Steve Jobs</p>
+      <hr>
+      <p>By: Qazi</p>
+      <p style="margin-top:10px; font-size:14px;">
+        Welcome to your personal Smart Day Planner! This website helps you organize your daily activities with AI-generated and manual timetables, keeps you productive with timely notifications, and lets you jot down your daily notes. Plus, the fun mini-games and daily motivation quotes keep your mind happy and inspired throughout the day. Stay organized, stay motivated, and make every day productive!
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Notifications helper
+  function notifyUser(title,message){
+    if(Notification.permission==="granted"){ 
+      new Notification(title,{body:message}); 
+    } else { 
+      alert(title+"\n"+message); 
+    }
+  }
+
+  // Manual Timetable
+  let manualActivities=[]; let notifiedManual={};
+  document.getElementById("addManualBtn").onclick=function(){
+    const name=document.getElementById("manualActivity").value;
+    const time=document.getElementById("manualTime").value;
+    if(!name||!time){ alert("Enter both activity and time"); return; }
+    manualActivities.push({name,time});
+    manualActivities.sort((a,b)=>a.time.localeCompare(b.time));
+    displayManual();
+    document.getElementById("manualActivity").value="";
+    document.getElementById("manualTime").value="";
+  }
+  function displayManual(){ const list=document.getElementById("manualTimetable"); list.innerHTML="";
+    manualActivities.forEach(a=>{ const li=document.createElement("li"); li.textContent=a.time+" - "+a.name; list.appendChild(li); });
+  }
+  document.getElementById("activateManualBtn").onclick=function(){
+    if(!manualActivities.length){ alert("Add activities first!"); return; }
+    if(Notification.permission!=="granted") Notification.requestPermission();
+    manualActivities.forEach(a=>{ notifiedManual[a.time+a.name]=false; });
+    alert("Manual timetable activated! Notifications ON.");
+  }
+
+  // AI Timetable
+  let aiActivities=[]; let notifiedAI={};
+  document.getElementById("activateAI").onclick=function(){
+    if(Notification.permission!=="granted") Notification.requestPermission();
+    const text=document.getElementById("userInfo").value.toLowerCase();
+    let schoolMatch=text.match(/school.*?(\d{1,2})(am|pm)?\s*[-to]+\s*(\d{1,2})(am|pm)?/);
+    let schoolStart="08:00", schoolEnd="14:00";
+    if(schoolMatch){ let sh=parseInt(schoolMatch[1]), eh=parseInt(schoolMatch[3]);
+      if(schoolMatch[2]==="pm" && sh<12) sh+=12;
+      if(schoolMatch[4]==="pm" && eh<12) eh+=12;
+      schoolStart=String(sh).padStart(2,'0')+":00"; schoolEnd=String(eh).padStart(2,'0')+":00"; }
+    let gameMatch=text.match(/gaming.*?(\d{1,2})\s*hours?/);
+    let gamingStart="17:00", gamingEnd="19:00";
+    if(gameMatch){ let gHours=parseInt(gameMatch[1]); let endH=17+gHours; if(endH>23) endH=23; gamingEnd=String(endH).padStart(2,'0')+":00"; }
+    let sleepMatch=text.match(/sleep.*?(\d{1,2})(am|pm)?/); let sleepTime="22:30";
+    if(sleepMatch){ let sH=parseInt(sleepMatch[1]); if(sleepMatch[2]==="pm" && sH<12) sH+=12; sleepTime=String(sH).padStart(2,'0')+":00"; }
+    aiActivities=[ {time:"07:00", name:"Wake Up & Breakfast"},
+      {time:schoolStart, name:"School"},
+      {time:schoolEnd, name:"Lunch & Rest"},
+      {time:"16:00", name:"Homework / Study"},
+      {time:gamingStart, name:"Gaming"},
+      {time:gamingEnd, name:"Exercise / Outdoor Play"},
+      {time:"20:00", name:"Family / Dinner"},
+      {time:sleepTime, name:"Sleep"} ];
+    aiActivities.forEach(a=>{ notifiedAI[a.time+a.name]=false; });
+    displayAI(); alert("AI timetable activated! Notifications ON.");
+  }
+  function displayAI(){ const list=document.getElementById("aiTimetable"); list.innerHTML="";
+    aiActivities.forEach(a=>{ const li=document.createElement("li"); li.textContent=a.time+" - "+a.name; list.appendChild(li); });
+  }
+
+  // Polling notifications
+  setInterval(()=>{ const now=new Date(); const currentTime=now.toTimeString().slice(0,5);
+    manualActivities.forEach((a,i)=>{ const key=a.time+a.name; if(!notifiedManual[key] && a.time===currentTime){ notifiedManual[key]=true;
+      let next=manualActivities[i+1]?manualActivities[i+1].name:"No more activities today"; notifyUser("Manual Timetable","Now: "+a.name+"\nNext: "+next); }});
+    aiActivities.forEach((a,i)=>{ const key=a.time+a.name; if(!notifiedAI[key] && a.time===currentTime){ notifiedAI[key]=true;
+      let next=aiActivities[i+1]?aiActivities[i+1].name:"No more activities today"; notifyUser("AI Timetable","Now: "+a.name+"\nNext: "+next); }});
+  },10000);
+
+  // Notepad Save
+  document.getElementById("saveNote").onclick=function(){
+    const heading=document.getElementById("noteHeading").value.trim();
+    const content=document.getElementById("noteContent").value;
+    if(!heading){ alert("Enter a heading for your note!"); return; }
+    const blob=new Blob([content],{type:"text/plain"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download=heading+".txt";
+    link.click();
+    alert("Note saved as "+heading+".txt");
+    document.getElementById("noteHeading").value=""; document.getElementById("noteContent").value="";
+  }
+
+  // Game Cycle: All 5 games
+  const gameArea=document.getElementById("gameArea");
+  const gameTitle=document.getElementById("gameTitle");
+  const scoreDisplay=document.getElementById("score");
+  let score=0;
+  let currentGameIndex=0;
+  const totalGames=5;
+
+  function clearGameArea(){ gameArea.innerHTML=""; score=0; scoreDisplay.textContent=score; }
+
+  function loadNextGame(){
+    clearGameArea();
+    currentGameIndex=(currentGameIndex+1)%totalGames;
+    startGame(currentGameIndex);
+  }
+
+  function startGame(index){
+    switch(index){
+      case 0: gameTitle.textContent="Game: Catch the Ball"; catchTheBall(); break;
+      case 1: gameTitle.textContent="Game: Click the Moving Box"; clickBox(); break;
+      case 2: gameTitle.textContent="Game: Color Tap"; colorTap(); break;
+      case 3: gameTitle.textContent="Game: Quick Math Challenge"; mathChallenge(); break;
+      case 4: gameTitle.textContent="Game: Memory Match"; memoryMatch(); break;
+    }
+  }
+
+  // Game 1
+  function catchTheBall(){
+    const ball=document.createElement("div");
+    ball.style.width="40px"; ball.style.height="40px"; ball.style.background="#e74c3c"; ball.style.borderRadius="50%";
+    ball.style.position="absolute"; ball.style.cursor="pointer"; gameArea.appendChild(ball);
+    function moveBall(){ const maxX=gameArea.clientWidth-40; const maxY=gameArea.clientHeight-40;
+      const x=Math.random()*maxX; const y=Math.random()*maxY; ball.style.left=x+"px"; ball.style.top=y+"px"; }
+    moveBall();
+    ball.onclick=function(){ score++; scoreDisplay.textContent=score; moveBall(); if(score>=10){ alert("Well done! Next game!"); loadNextGame(); } }
+  }
+
+  // Game 2
+  function clickBox(){
+    const box=document.createElement("div");
+    box.style.width="50px"; box.style.height="50px"; box.style.background="#3498db"; box.style.position="absolute"; box.style.cursor="pointer";
+    gameArea.appendChild(box);
+    function moveBox(){ const maxX=gameArea.clientWidth-50; const maxY=gameArea.clientHeight-50;
+      const x=Math.random()*maxX; const y=Math.random()*maxY; box.style.left=x+"px"; box.style.top=y+"px"; }
+    moveBox();
+    box.onclick=function(){ score++; scoreDisplay.textContent=score; moveBox(); if(score>=10){ alert("Great! Next game!"); loadNextGame(); } }
+  }
+
+  // Game 3: Color Tap
+  function colorTap(){
+    const colors=["#f1c40f","#2ecc71","#e67e22"]; let correctIndex=Math.floor(Math.random()*3);
+    function newCircles(){ gameArea.innerHTML="";
+      for(let i=0;i<3;i++){
+        const circle=document.createElement("div");
+        circle.style.width="40px"; circle.style.height="40px"; circle.style.borderRadius="50%"; circle.style.background=colors[i];
+        circle.style.position="absolute"; circle.style.cursor="pointer";
+        circle.style.left=Math.random()*(gameArea.clientWidth-40)+"px";
+        circle.style.top=Math.random()*(gameArea.clientHeight-40)+"px";
+        circle.onclick=function(){ if(i===correctIndex){ score++; scoreDisplay.textContent=score; }
+          if(score>=10){ alert("Awesome! Next game!"); loadNextGame(); } else { correctIndex=Math.floor(Math.random()*3); newCircles(); }
+        }
+        gameArea.appendChild(circle);
+      }
+    }
+    newCircles();
+  }
+
+  // Game 4: Math Challenge
+  function mathChallenge(){ 
+    function newQuestion(){ gameArea.innerHTML="";
+      let a=Math.floor(Math.random()*10)+1; let b=Math.floor(Math.random()*10)+1; let answer=a+b;
+      const question=document.createElement("div"); question.textContent=`${a} + ${b} = ?`; question.style.fontSize="20px"; question.style.marginBottom="10px";
+      gameArea.appendChild(question);
+      let correctButton=document.createElement("button"); correctButton.textContent=answer; gameArea.appendChild(correctButton);
+      let wrong1=document.createElement("button"); wrong1.textContent=answer+1; gameArea.appendChild(wrong1);
+      let wrong2=document.createElement("button"); wrong2.textContent=answer-1; gameArea.appendChild(wrong2);
+      [correctButton,wrong1,wrong2].forEach(btn=>{ btn.style.margin="5px"; btn.onclick=function(){
+        if(btn===correctButton){ score++; scoreDisplay.textContent=score; }
+        if(score>=10){ alert("Nice! Next game!"); loadNextGame(); } else { newQuestion(); }
+      }})
+    }
+    newQuestion();
+  }
+
+  // Game 5: Memory Match
+  function memoryMatch(){
+    let number=Math.floor(Math.random()*9000)+1000;
+    gameArea.innerHTML=`<p>Remember this number: <strong>${number}</strong></p>`;
+    setTimeout(()=>{ gameArea.innerHTML='<input type="text" id="memoryInput" placeholder="Enter the number">'; let input=document.getElementById("memoryInput");
+      input.onchange=function(){ if(input.value==number){ score++; scoreDisplay.textContent=score; if(score>=10){ alert("Excellent! Next game!"); loadNextGame(); } else { memoryMatch(); } }
+        else { alert("Wrong! Try again!"); memoryMatch(); } } },2000);
+  }
+
+  startGame(currentGameIndex);
+</script>
+</body>
+</html>
