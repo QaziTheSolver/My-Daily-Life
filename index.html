@@ -110,8 +110,21 @@
     }
   }
 
-  // Manual Timetable
-  let manualActivities=[]; let notifiedManual={};
+  // --- MANUAL TIMETABLE ---
+  let manualActivities=[]; 
+  let notifiedManual={};
+
+  function saveManual(){
+    localStorage.setItem("manualActivities", JSON.stringify(manualActivities));
+  }
+  function loadManual(){
+    let data = localStorage.getItem("manualActivities");
+    if(data){
+      manualActivities = JSON.parse(data);
+      displayManual();
+    }
+  }
+
   document.getElementById("addManualBtn").onclick=function(){
     const name=document.getElementById("manualActivity").value;
     const time=document.getElementById("manualTime").value;
@@ -119,12 +132,21 @@
     manualActivities.push({name,time});
     manualActivities.sort((a,b)=>a.time.localeCompare(b.time));
     displayManual();
+    saveManual();
     document.getElementById("manualActivity").value="";
     document.getElementById("manualTime").value="";
   }
-  function displayManual(){ const list=document.getElementById("manualTimetable"); list.innerHTML="";
-    manualActivities.forEach(a=>{ const li=document.createElement("li"); li.textContent=a.time+" - "+a.name; list.appendChild(li); });
+
+  function displayManual(){ 
+    const list=document.getElementById("manualTimetable"); 
+    list.innerHTML="";
+    manualActivities.forEach(a=>{ 
+      const li=document.createElement("li"); 
+      li.textContent=a.time+" - "+a.name; 
+      list.appendChild(li); 
+    });
   }
+
   document.getElementById("activateManualBtn").onclick=function(){
     if(!manualActivities.length){ alert("Add activities first!"); return; }
     if(Notification.permission!=="granted") Notification.requestPermission();
@@ -132,8 +154,21 @@
     alert("Manual timetable activated! Notifications ON.");
   }
 
-  // AI Timetable
-  let aiActivities=[]; let notifiedAI={};
+  // --- AI TIMETABLE ---
+  let aiActivities=[]; 
+  let notifiedAI={};
+
+  function saveAI(){
+    localStorage.setItem("aiActivities", JSON.stringify(aiActivities));
+  }
+  function loadAI(){
+    let data = localStorage.getItem("aiActivities");
+    if(data){
+      aiActivities = JSON.parse(data);
+      displayAI();
+    }
+  }
+
   document.getElementById("activateAI").onclick=function(){
     if(Notification.permission!=="granted") Notification.requestPermission();
     const text=document.getElementById("userInfo").value.toLowerCase();
@@ -157,128 +192,73 @@
       {time:"20:00", name:"Family / Dinner"},
       {time:sleepTime, name:"Sleep"} ];
     aiActivities.forEach(a=>{ notifiedAI[a.time+a.name]=false; });
-    displayAI(); alert("AI timetable activated! Notifications ON.");
-  }
-  function displayAI(){ const list=document.getElementById("aiTimetable"); list.innerHTML="";
-    aiActivities.forEach(a=>{ const li=document.createElement("li"); li.textContent=a.time+" - "+a.name; list.appendChild(li); });
+    displayAI(); saveAI();
+    alert("AI timetable activated! Notifications ON.");
   }
 
-  // Polling notifications
-  setInterval(()=>{ const now=new Date(); const currentTime=now.toTimeString().slice(0,5);
+  function displayAI(){ 
+    const list=document.getElementById("aiTimetable"); 
+    list.innerHTML="";
+    aiActivities.forEach(a=>{ 
+      const li=document.createElement("li"); 
+      li.textContent=a.time+" - "+a.name; 
+      list.appendChild(li); 
+    });
+  }
+
+  // --- NOTEPAD ---
+  function saveNotes(){
+    let notes = {};
+    const heading=document.getElementById("noteHeading").value.trim();
+    const content=document.getElementById("noteContent").value;
+    if(!heading){ alert("Enter a heading for your note!"); return; }
+    notes[heading] = content;
+    localStorage.setItem("notes", JSON.stringify({...loadNotes(), ...notes}));
+    alert("Note saved!");
+    document.getElementById("noteHeading").value="";
+    document.getElementById("noteContent").value="";
+  }
+
+  function loadNotes(){
+    let notes = localStorage.getItem("notes");
+    return notes ? JSON.parse(notes) : {};
+  }
+
+  document.getElementById("saveNote").onclick=saveNotes;
+
+  // --- Load everything on page load ---
+  window.onload = function(){
+    loadManual();
+    loadAI();
+    let notes = loadNotes();
+    if(Object.keys(notes).length>0){
+      const firstNote = Object.keys(notes)[0];
+      document.getElementById("noteHeading").value = firstNote;
+      document.getElementById("noteContent").value = notes[firstNote];
+    }
+  }
+
+  // --- Notifications polling ---
+  setInterval(()=>{
+    const now=new Date(); 
+    const currentTime=now.toTimeString().slice(0,5);
     manualActivities.forEach((a,i)=>{ const key=a.time+a.name; if(!notifiedManual[key] && a.time===currentTime){ notifiedManual[key]=true;
       let next=manualActivities[i+1]?manualActivities[i+1].name:"No more activities today"; notifyUser("Manual Timetable","Now: "+a.name+"\nNext: "+next); }});
     aiActivities.forEach((a,i)=>{ const key=a.time+a.name; if(!notifiedAI[key] && a.time===currentTime){ notifiedAI[key]=true;
       let next=aiActivities[i+1]?aiActivities[i+1].name:"No more activities today"; notifyUser("AI Timetable","Now: "+a.name+"\nNext: "+next); }});
   },10000);
 
-  // Notepad Save
-  document.getElementById("saveNote").onclick=function(){
-    const heading=document.getElementById("noteHeading").value.trim();
-    const content=document.getElementById("noteContent").value;
-    if(!heading){ alert("Enter a heading for your note!"); return; }
-    const blob=new Blob([content],{type:"text/plain"});
-    const link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download=heading+".txt";
-    link.click();
-    alert("Note saved as "+heading+".txt");
-    document.getElementById("noteHeading").value=""; document.getElementById("noteContent").value="";
-  }
-
-  // Game Cycle: All 5 games
+  // --- GAME CYCLE: catch the ball as placeholder ---
   const gameArea=document.getElementById("gameArea");
   const gameTitle=document.getElementById("gameTitle");
   const scoreDisplay=document.getElementById("score");
   let score=0;
-  let currentGameIndex=0;
-  const totalGames=5;
-
-  function clearGameArea(){ gameArea.innerHTML=""; score=0; scoreDisplay.textContent=score; }
-
-  function loadNextGame(){
-    clearGameArea();
-    currentGameIndex=(currentGameIndex+1)%totalGames;
-    startGame(currentGameIndex);
+  function startGame(){
+    gameArea.innerHTML='<div style="width:40px;height:40px;background:red;border-radius:50%;position:absolute;top:50px;left:50px;cursor:pointer;" id="ball"></div>';
+    document.getElementById("ball").onclick=function(){ score++; scoreDisplay.textContent=score; if(score>=10){ alert("You completed the game!"); score=0; scoreDisplay.textContent=score; } }
   }
+  startGame();
 
-  function startGame(index){
-    switch(index){
-      case 0: gameTitle.textContent="Game: Catch the Ball"; catchTheBall(); break;
-      case 1: gameTitle.textContent="Game: Click the Moving Box"; clickBox(); break;
-      case 2: gameTitle.textContent="Game: Color Tap"; colorTap(); break;
-      case 3: gameTitle.textContent="Game: Quick Math Challenge"; mathChallenge(); break;
-      case 4: gameTitle.textContent="Game: Memory Match"; memoryMatch(); break;
-    }
-  }
-
-  // Game 1
-  function catchTheBall(){
-    const ball=document.createElement("div");
-    ball.style.width="40px"; ball.style.height="40px"; ball.style.background="#e74c3c"; ball.style.borderRadius="50%";
-    ball.style.position="absolute"; ball.style.cursor="pointer"; gameArea.appendChild(ball);
-    function moveBall(){ const maxX=gameArea.clientWidth-40; const maxY=gameArea.clientHeight-40;
-      const x=Math.random()*maxX; const y=Math.random()*maxY; ball.style.left=x+"px"; ball.style.top=y+"px"; }
-    moveBall();
-    ball.onclick=function(){ score++; scoreDisplay.textContent=score; moveBall(); if(score>=10){ alert("Well done! Next game!"); loadNextGame(); } }
-  }
-
-  // Game 2
-  function clickBox(){
-    const box=document.createElement("div");
-    box.style.width="50px"; box.style.height="50px"; box.style.background="#3498db"; box.style.position="absolute"; box.style.cursor="pointer";
-    gameArea.appendChild(box);
-    function moveBox(){ const maxX=gameArea.clientWidth-50; const maxY=gameArea.clientHeight-50;
-      const x=Math.random()*maxX; const y=Math.random()*maxY; box.style.left=x+"px"; box.style.top=y+"px"; }
-    moveBox();
-    box.onclick=function(){ score++; scoreDisplay.textContent=score; moveBox(); if(score>=10){ alert("Great! Next game!"); loadNextGame(); } }
-  }
-
-  // Game 3: Color Tap
-  function colorTap(){
-    const colors=["#f1c40f","#2ecc71","#e67e22"]; let correctIndex=Math.floor(Math.random()*3);
-    function newCircles(){ gameArea.innerHTML="";
-      for(let i=0;i<3;i++){
-        const circle=document.createElement("div");
-        circle.style.width="40px"; circle.style.height="40px"; circle.style.borderRadius="50%"; circle.style.background=colors[i];
-        circle.style.position="absolute"; circle.style.cursor="pointer";
-        circle.style.left=Math.random()*(gameArea.clientWidth-40)+"px";
-        circle.style.top=Math.random()*(gameArea.clientHeight-40)+"px";
-        circle.onclick=function(){ if(i===correctIndex){ score++; scoreDisplay.textContent=score; }
-          if(score>=10){ alert("Awesome! Next game!"); loadNextGame(); } else { correctIndex=Math.floor(Math.random()*3); newCircles(); }
-        }
-        gameArea.appendChild(circle);
-      }
-    }
-    newCircles();
-  }
-
-  // Game 4: Math Challenge
-  function mathChallenge(){ 
-    function newQuestion(){ gameArea.innerHTML="";
-      let a=Math.floor(Math.random()*10)+1; let b=Math.floor(Math.random()*10)+1; let answer=a+b;
-      const question=document.createElement("div"); question.textContent=`${a} + ${b} = ?`; question.style.fontSize="20px"; question.style.marginBottom="10px";
-      gameArea.appendChild(question);
-      let correctButton=document.createElement("button"); correctButton.textContent=answer; gameArea.appendChild(correctButton);
-      let wrong1=document.createElement("button"); wrong1.textContent=answer+1; gameArea.appendChild(wrong1);
-      let wrong2=document.createElement("button"); wrong2.textContent=answer-1; gameArea.appendChild(wrong2);
-      [correctButton,wrong1,wrong2].forEach(btn=>{ btn.style.margin="5px"; btn.onclick=function(){
-        if(btn===correctButton){ score++; scoreDisplay.textContent=score; }
-        if(score>=10){ alert("Nice! Next game!"); loadNextGame(); } else { newQuestion(); }
-      }})
-    }
-    newQuestion();
-  }
-
-  // Game 5: Memory Match
-  function memoryMatch(){
-    let number=Math.floor(Math.random()*9000)+1000;
-    gameArea.innerHTML=`<p>Remember this number: <strong>${number}</strong></p>`;
-    setTimeout(()=>{ gameArea.innerHTML='<input type="text" id="memoryInput" placeholder="Enter the number">'; let input=document.getElementById("memoryInput");
-      input.onchange=function(){ if(input.value==number){ score++; scoreDisplay.textContent=score; if(score>=10){ alert("Excellent! Next game!"); loadNextGame(); } else { memoryMatch(); } }
-        else { alert("Wrong! Try again!"); memoryMatch(); } } },2000);
-  }
-
-  startGame(currentGameIndex);
 </script>
 </body>
 </html>
